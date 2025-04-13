@@ -1,0 +1,156 @@
+#define IN1 8
+#define IN2 9
+#define ENA A5
+#define IN3 10
+#define IN4 11
+#define ENB A1
+#define IN6 4
+#define IN5 5
+#define IN7 6
+#define IN8 7
+#define ENC A2
+#define END A3
+#define TRIG_PIN 2
+#define ECHO_PIN 3
+double previousDistance = 400.0;
+int speed =1024;
+unsigned long lastTimeUltrasonicTrigger = millis();
+unsigned long ultrasonicTriggerDelay = 60;
+volatile unsigned long pulseInTimeBegin;
+volatile unsigned long pulseInTimeEnd;
+volatile bool newDistanceAvailable = false;
+void movingforward(){
+digitalWrite(IN1,HIGH);
+digitalWrite(IN2,LOW);
+digitalWrite(IN3,HIGH);
+digitalWrite(IN4,LOW);
+digitalWrite(IN5,HIGH);
+digitalWrite(IN6,LOW);
+digitalWrite(IN7,HIGH);
+digitalWrite(IN8,LOW);
+}
+void movingbackward(){
+digitalWrite(IN2,HIGH);
+digitalWrite(IN1,LOW);
+digitalWrite(IN4,HIGH);
+digitalWrite(IN3,LOW);
+
+digitalWrite(IN6,HIGH);
+digitalWrite(IN5,LOW);
+digitalWrite(IN8,HIGH);
+digitalWrite(IN7,LOW);
+}
+void movingleft(){
+digitalWrite(IN1,HIGH);
+digitalWrite(IN2,LOW);
+digitalWrite(IN3,HIGH);
+digitalWrite(IN4,LOW);
+digitalWrite(IN5,HIGH);
+digitalWrite(IN6,LOW);
+digitalWrite(IN7,LOW);
+digitalWrite(IN8,HIGH);
+
+}
+void movingright(){
+digitalWrite(IN1,HIGH);
+digitalWrite(IN2,LOW);
+digitalWrite(IN3,HIGH);
+digitalWrite(IN4,LOW);
+digitalWrite(IN5,LOW);
+digitalWrite(IN6,HIGH);
+digitalWrite(IN7,HIGH);
+digitalWrite(IN8,LOW);
+
+}
+void avoidingobs(double dist){
+if(dist<40){
+movingright();
+}
+movingforward();
+}
+
+void Trig_pin(){
+digitalWrite(TRIG_PIN,LOW);
+delay(2);
+digitalWrite(TRIG_PIN,HIGH);
+delay(10);
+digitalWrite(TRIG_PIN,LOW);
+}
+
+double getUltrasonicDistance()
+{
+double durationMicros = pulseInTimeEnd - pulseInTimeBegin;
+double distance = durationMicros / 58.0; // cm (148.0: inches)
+if (distance > 400.0) {
+return previousDistance;
+}
+distance = previousDistance * 0.7 + distance * 0.3;
+previousDistance = distance;
+return distance;
+}
+void echoPinInterrupt()
+{
+if (digitalRead(ECHO_PIN) == HIGH) { // start measuring
+pulseInTimeBegin = micros();
+}
+else { // stop measuring
+pulseInTimeEnd = micros();
+newDistanceAvailable = true;
+}
+}
+void setup() {
+Serial.begin(115200);
+pinMode(IN1, OUTPUT);
+pinMode(IN2,OUTPUT);
+pinMode(IN3, OUTPUT);
+pinMode(IN4,OUTPUT);
+
+pinMode(IN5, OUTPUT);
+pinMode(IN6,OUTPUT);
+pinMode(IN7, OUTPUT);
+pinMode(IN8,OUTPUT);
+pinMode(ENA,OUTPUT);
+pinMode(ENB,OUTPUT);
+pinMode(ENC,OUTPUT);
+pinMode(END,OUTPUT);
+digitalWrite(IN1,LOW);
+digitalWrite(IN2,LOW);
+digitalWrite(IN3,LOW);
+digitalWrite(IN4,LOW);
+analogWrite(ENA,0);
+analogWrite(ENB,0);
+analogWrite(ENC,0);
+analogWrite(END,0);
+attachInterrupt(digitalPinToInterrupt(ECHO_PIN),
+echoPinInterrupt,
+CHANGE);
+Serial.println(IN1);
+Serial.print(IN2);
+Serial.println(IN3);
+Serial.print(IN4);
+Serial.println(IN5);
+Serial.print(IN6);
+Serial.println(IN7);
+Serial.print(IN8);
+Serial.print(analogRead(ENA));
+
+}
+void loop() {
+analogWrite(ENA,speed);
+analogWrite(ENB,speed);
+analogWrite(ENC,speed);
+analogWrite(END,speed);
+movingforward();
+
+unsigned long timeNow=millis();
+if(timeNow-lastTimeUltrasonicTrigger>ultrasonicTriggerDelay){
+lastTimeUltrasonicTrigger+= ultrasonicTriggerDelay;
+Trig_pin();
+}
+if (newDistanceAvailable) {
+newDistanceAvailable = false;
+double distance = getUltrasonicDistance();
+avoidingobs(distance);
+}
+
+}
